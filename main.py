@@ -1,27 +1,16 @@
-import pandas as pd
-import numpy as np
 import codecs
 import re
-import string
+from collections import Counter
 import nltk
-nltk.download("stopwords")
-
+from nltk.tokenize import sent_tokenize, word_tokenize
+nltk.download('punkt')
+nltk.download('stopwords')
 from nltk.corpus import stopwords
-from pymystem3 import Mystem
-from string import punctuation
-
-
-
-
-
-# Сначала удалить ссылки, потом пунктуациЮ,
-# удалить нерелевантные слова (ссылки, слова на английском, и. т .д);
-# - удалить стоп слова с помощью готовых словарей ( при необходимости дополнить словарь);
-# - выполнить лемматизацию ( привести все слова в их начальную словоформу).
-#
-# 2. Отсортировать слова по частоте их употребления и выделить топ 100 слов
-
-#data = pd.read_csv('dannye.csv', delimiter=';')
+nltk.download('wordnet')
+nltk.download('averaged_perceptron_tagger')
+from nltk.stem import WordNetLemmatizer
+lemmatizer = WordNetLemmatizer()
+import pymorphy2
 
 
 file = codecs.open("dannye.csv", "r", "utf-8" ) # read csv file to make changes
@@ -34,30 +23,57 @@ def remove_URL(text): #delete all links
     return re.sub(r"https?://[^,\s]+,?", "  ", data_lower) #re.sub(r"http://\S+|https://\S+", "", text)
 
 def delete_tags(text):
-    return re.sub(r'<.*?>', '', text)
+    return re.sub(r'<.*?>', ' ', text)
 
 def remove_punctuation(text):
     # remove all punctuation
-    return re.sub(r'[^\w\s]', ' ', text)
+    return re.sub(r'[^\w\s]', ' ', text) #re.sub(r'[_,:;#"\'\.!?№><»«]', ' ', text)
 
 def remove_non_relevant (text):
-    return re.sub(r"id\S+", "", text)
+    return  re.sub(r'[a-z]\S+|[a-z]', ' ', text) #re.sub(r"id\S+|club\S+", "", text)
 
 def remove_tags(text):
-    return re.sub(r'<.*?>','', text)
+    return re.sub(r'<.*?>',' ', text)
 
 
 r_url = remove_URL(data_lower)
 r_tags= remove_tags(r_url)
 r_punctuation= remove_punctuation(r_tags)
 r_non_relevant = remove_non_relevant(r_punctuation)
-#print(r_non_relevant)
-mystr = re.sub(r"[qwertyuiopasdfghjklzxcvbnm]", "", r_non_relevant)
-print(mystr)
 
-#Create lemmatizer and stopwords list
-mystem = Mystem()
-russian_stopwords = stopwords.words("russian")
+
+a= word_tokenize(r_non_relevant, language='Russian') # Убераю стоп слова из текста
+#print(a)
+s = []
+en_stops = set(stopwords.words('russian'))
+for word in a:
+    if word not in en_stops:
+        s.append(word)
+#print(s)
+
+
+
+#lemmatized_output = ' '.join([lemmatizer.lemmatize(w) for w in s])
+#print(lemmatized_output)
+
+# КОД НИЖЕ ВЫПОЛНЯЕТ УДАЛЕНИЕ ОКОНЧАНИЯ НЕ ЛЕМАНТИЗАЦИЮ
+# from nltk.stem.snowball import SnowballStemmer
+# stemmer = SnowballStemmer("russian")
+# l=[stemmer.stem(word) for word in s]
+# print(l)
+
+#КОД НИЖЕ ВЫПОЛНЯЕТ НЕ КОНТЕКСТНУЮ ЛЕМАНТЕЗАЦИЮ
+res = []
+morph = pymorphy2.MorphAnalyzer()
+for word in s:
+    p = morph.parse(word)[0]
+    res.append(p.normal_form)
+#print(res)
+counter = Counter(res)
+print(sorted(res, key=counter.get, reverse=True)) # Отсортированные слова по частоте употребления
+
+print(counter.most_common(100))# ВЫВОДИТ ТОП 100 самых популярных слов
+
 
 #ПРИМЕР ТОГО КАК МОЖНО СТОП СЛОВА ВЫТАЩИТЬ ИЗ ТЕКсТА
 # list_of_stop_words = ["в", "и", "по", "за"]
